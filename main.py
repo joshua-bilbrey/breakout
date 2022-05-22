@@ -1,10 +1,12 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty, ReferenceListProperty, ObjectProperty
+from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.vector import Vector
 from kivy.clock import Clock
 from kivy.config import Config
-from time import time, sleep
+from time import time
+import pickle
 from levels import LevelManager, BLUE
 
 level_manager = LevelManager()
@@ -58,10 +60,26 @@ class Ball(Widget):
 class BreakoutGame(Widget):
     ball = ObjectProperty(None)
     paddle = ObjectProperty(None)
-    current_level = 1
+    current_level = 0
+    high_score = NumericProperty(0)
     time_since_bounce_x = time()
     time_since_bounce_y = time()
     update_game = None
+
+    def get_high_score(self):
+        try:
+            with open('score.dat', 'rb') as file:
+                self.high_score = pickle.load(file)
+            print(f'opened file - high score {self.high_score}')
+        except FileNotFoundError:
+            self.high_score = 0
+            print(f'{self.high_score}')
+
+    def set_high_score(self):
+        self.high_score = self.paddle.score
+        with open('score.dat', 'wb') as file:
+            pickle.dump(self.high_score, file)
+            print(f'new high score {self.high_score}')
 
     def reset_ball(self):
         self.paddle.center_x = self.center_x
@@ -72,6 +90,7 @@ class BreakoutGame(Widget):
     def serve_ball(self, vel=(3, 4)):
         self.ball.velocity = vel
 
+    # TODO 6: Create various levels
     def create_blocks(self):
         level_dict = level_manager.levels[f'level_{self.current_level}']
         for block in level_dict:
@@ -87,11 +106,22 @@ class BreakoutGame(Widget):
         value = block.value
         self.paddle.score += value
 
+    def on_touch_move(self, touch):
+        self.paddle.center_x = touch.x
+
+        # serve ball if needed
+        if self.ball.velocity == [0, 0]:
+            self.serve_ball()
+
+    def end_game(self):
+        self.update_game.cancel()
+
     def update(self, dt):
         self.ball.move()
 
         # TODO 3.75: Code wall bounce and paddle bounce
         # bounce off blocks
+        no_blocks = True
         for wid in self.walk():
             if isinstance(wid, Block):
                 if self.ball.collide_widget(wid):
@@ -108,12 +138,13 @@ class BreakoutGame(Widget):
                         # TODO 3.875: Blocks disappear when hit
                         self.score(wid)
                         self.remove_widget(wid)
+                no_blocks = False
 
         # bounce off paddle
         self.paddle.bounce_ball(self.ball)
 
         # bounce off top and sides
-        if self.ball.top > self.height:
+        if self.ball.top > 750:
             self.ball.velocity_y *= -1
         if self.ball.x < 0 or self.ball.right > self.width:
             self.ball.velocity_x *= -1
@@ -124,37 +155,50 @@ class BreakoutGame(Widget):
             self.paddle.lives -= 1
             self.reset_ball()
 
+        # start next level
+        if no_blocks:
+            self.reset_ball()
+            self.current_level += 1
+            self.create_blocks()
+
         # end game if lives hit zero
         if self.paddle.lives == 0:
             self.end_game()
+            if self.high_score < self.paddle.score:
+                self.set_high_score()
 
-    def on_touch_move(self, touch):
-        self.paddle.center_x = touch.x
 
-        # serve ball if needed
-        if self.ball.velocity == [0, 0]:
-            self.serve_ball()
+class StartScreen(Screen):
+    pass
 
-    def end_game(self):
-        self.update_game.cancel()
+
+class GameScreen(Screen):
+    def __init__(self, **kwargs):
+        super(GameScreen, self).__init__(**kwargs)
+        self.game = BreakoutGame()
+        self.add_widget(self.game)
+        self.game.create_blocks()
+        self.game.start_game()
+        self.game.get_high_score()
 
 
 class BreakoutApp(App):
     def build(self):
-        game = BreakoutGame()
-        print(game.ball.velocity)
-        game.create_blocks()
-        game.start_game()
-        return game
+        sm = ScreenManager()
+        # TODO: 7: A kv file for main menu too
+        sm.add_widget(StartScreen(name='start_screen'))
+        sm.add_widget(GameScreen(name='game_screen'))
+        # print(game.ball.velocity)
+        # game.create_blocks()
+        # game.start_game()
+        return sm
 
 
 # TODO 4: Scoring System
 
 # TODO 5.5: Fix ending game, maybe buttons to go to main menu or play again?
 
-# TODO 6: Create various levels
-
-# TODO: 7: A kv file for main menu too
+# TODO 7.5: Increase speed or difficulty?
 
 Config.set('graphics', 'width', 1000)
 Config.set('graphics', 'height', 800)
