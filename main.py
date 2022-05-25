@@ -1,16 +1,23 @@
+import kivy
 from kivy.app import App
+from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty, ReferenceListProperty, ObjectProperty
-from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 from kivy.vector import Vector
 from kivy.clock import Clock
-from kivy.config import Config
+from kivy.uix.button import Button
 from time import time
 import pickle
 from levels import LevelManager, BLUE
 
 level_manager = LevelManager()
 level_manager.create_levels()
+
+
+def _on_resize(self, width, height):
+    Window.size = (1000, 800)
+    return True
 
 
 # TODO 2: Block Class
@@ -44,6 +51,9 @@ class Paddle(Widget):
                 ball.velocity_x *= -1
             self.time_since_bounce = time()
 
+    def move(self, direction=1, movement_speed=20):
+        self.center_x += (direction * movement_speed)
+
 
 # TODO 3.5: Ball Class
 class Ball(Widget):
@@ -60,11 +70,44 @@ class Ball(Widget):
 class BreakoutGame(Widget):
     ball = ObjectProperty(None)
     paddle = ObjectProperty(None)
-    current_level = 0
+    current_level = 1
     high_score = NumericProperty(0)
     time_since_bounce_x = time()
     time_since_bounce_y = time()
     update_game = None
+    game_on = True
+
+    def __init__(self, **kwargs):
+        super(BreakoutGame, self).__init__(**kwargs)
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard = None
+
+    def on_touch_move(self, touch):
+        if self.game_on:
+            self.paddle.center_x = touch.x
+
+        # serve ball if needed
+        if self.ball.velocity == [0, 0]:
+            self.serve_ball()
+
+    # TODO 8: Add control for paddle with keys
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if keycode[1] == 'right':
+            self.paddle.move()
+        elif keycode[1] == 'left':
+            self.paddle.move(direction=-1)
+
+        # serve ball if needed
+        if self.ball.velocity == [0, 0]:
+            self.serve_ball()
+        return True
+
+    def return_to_menu(self, on_touch_down=None, touch=None):
+        self.parent.manager.current = 'start_screen'
 
     def get_high_score(self):
         try:
@@ -99,19 +142,21 @@ class BreakoutGame(Widget):
                               value=level_dict[block]['value'])
             self.add_widget(new_block)
 
-    def start_game(self):
-        self.update_game = Clock.schedule_interval(self.update, 1/60)
+    def start_game(self, on_touch_down=None, touch=None):
+        self.current_level = 1
+        self.game_on = True
+        self.paddle.lives = 3
+        self.paddle.score = 0
+        # clear blocks
+        for wid in self.walk():
+            if isinstance(wid, Block) or isinstance(wid, Button):
+                self.remove_widget(wid)
+        self.create_blocks()
+        self.update_game = Clock.schedule_interval(self.update, 1/90)
 
     def score(self, block):
         value = block.value
         self.paddle.score += value
-
-    def on_touch_move(self, touch):
-        self.paddle.center_x = touch.x
-
-        # serve ball if needed
-        if self.ball.velocity == [0, 0]:
-            self.serve_ball()
 
     def end_game(self):
         self.update_game.cancel()
@@ -166,43 +211,44 @@ class BreakoutGame(Widget):
             self.end_game()
             if self.high_score < self.paddle.score:
                 self.set_high_score()
+            self.game_on = False
+            # TODO 5.5: Fix ending game, maybe buttons to go to main menu or play again?
+            retry_button = Button(text='Try Again?', size=(100, 30), pos=(450, 375), on_press=self.start_game)
+            quit_button = Button(text='Quit to Menu', size=(100, 30), pos=(450, 315), on_press=self.return_to_menu)
+            self.add_widget(retry_button)
+            self.add_widget(quit_button)
 
 
 class StartScreen(Screen):
-    pass
+    Window.size = (1000, 800)
+    Window.bind(on_resize=_on_resize)
 
 
 class GameScreen(Screen):
+    Window.bind(on_resize=_on_resize)
+
     def __init__(self, **kwargs):
         super(GameScreen, self).__init__(**kwargs)
         self.game = BreakoutGame()
         self.add_widget(self.game)
-        self.game.create_blocks()
+
+    def on_pre_enter(self, *args):
         self.game.start_game()
         self.game.get_high_score()
 
 
 class BreakoutApp(App):
     def build(self):
-        sm = ScreenManager()
+        sm = ScreenManager(transition=NoTransition())
         # TODO: 7: A kv file for main menu too
         sm.add_widget(StartScreen(name='start_screen'))
         sm.add_widget(GameScreen(name='game_screen'))
-        # print(game.ball.velocity)
-        # game.create_blocks()
-        # game.start_game()
         return sm
 
 
 # TODO 4: Scoring System
 
-# TODO 5.5: Fix ending game, maybe buttons to go to main menu or play again?
-
 # TODO 7.5: Increase speed or difficulty?
-
-Config.set('graphics', 'width', 1000)
-Config.set('graphics', 'height', 800)
-Config.set('graphics', 'resizable', False)
 
 if __name__ == "__main__":
     BreakoutApp().run()
