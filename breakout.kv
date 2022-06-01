@@ -61,13 +61,57 @@
         center_x: root.center_x
         y: breakout_paddle.top
 
-<StartScreen>:
-    BoxLayout:
-        Button:
-            text: 'Start game'
-            on_press:
-                root.manager.current = 'game_screen'
-        Button:
-            text: 'Quit'
-
 <GameScreen>:
+
+<StartScreen>:
+    Button:
+        text: 'Start game'
+        background_normal: ''
+        background_color: (183/255, 229/255, 221/255)
+        color: 0, 0, 0
+        size: (100, 25)
+        size_hint: None, None
+        center: (root.center_x - 110, root.center_y)
+        on_press:
+            root.manager.current = 'game_screen'
+
+    Button:
+        text: 'Quit'
+        background_normal: ''
+        background_color: (154/255, 134/255, 164/255)
+        color: 0, 0, 0
+        size: (100, 25)
+        size_hint: None, None
+        center: (root.center_x + 110, root.center_y)
+        on_press: app.stop()
+
+    Paddle:
+        id: start_paddle
+        size_hint: None, None
+        size:
+        center: (root.center_x, root.y + self.height)
+
+    Ball:
+        size_hint: None, None
+        center_x: root.center_x
+        y: start_paddle.top
+
+    Block:
+        size_hint: None, None
+        center: root.center
+
+    Block:
+        size_hint: None, None
+        center: (root.center_x + 220, root.center_y + 35)
+
+    Block:
+        size_hint: None, None
+        center: (root.center_x - 220, root.center_y + 35)
+
+    Block:
+        size_hint: None, None
+        center: (root.center_x - 110, root.center_y + 35)
+
+    Block:
+        size_hint: None, None
+        center: (root.center_x + 110, root.center_y - 35)
