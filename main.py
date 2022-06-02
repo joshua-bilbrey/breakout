@@ -1,5 +1,6 @@
 import kivy
 from kivy.app import App
+from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.properties import NumericProperty, ReferenceListProperty, ObjectProperty
@@ -20,7 +21,6 @@ def _on_resize(self, width, height):
     return True
 
 
-# TODO 2: Block Class
 class Block(Widget):
     def __init__(self, color=BLUE, value=1, **kwargs):
         self.color = color
@@ -28,14 +28,12 @@ class Block(Widget):
         super(Block, self).__init__(**kwargs)
 
 
-# TODO 3: Paddle Class
 class Paddle(Widget):
     lives = NumericProperty(3)
     score = NumericProperty(0)
     time_since_bounce = time()
 
     def bounce_ball(self, ball):
-        # TODO 3.9: Made paddle change direction of ball
         if self.collide_widget(ball) and (time() - self.time_since_bounce > 0.1) and ball.velocity != [0, 0]:
             x = min(abs(self.x - ball.right), abs(self.right - ball.x))
             y = abs(self.top - ball.y)
@@ -56,7 +54,6 @@ class Paddle(Widget):
         self.center_x += (direction * movement_speed)
 
 
-# TODO 3.5: Ball Class
 class Ball(Widget):
     velocity_x = NumericProperty(0)
     velocity_y = NumericProperty(0)
@@ -68,7 +65,6 @@ class Ball(Widget):
         self.pos = Vector(*self.velocity) + self.pos
 
 
-# TODO 1: Kivy Screen creation
 class BreakoutGame(Widget):
     ball = ObjectProperty(None)
     paddle = ObjectProperty(None)
@@ -78,6 +74,9 @@ class BreakoutGame(Widget):
     time_since_bounce_y = time()
     update_game = None
     game_on = True
+    level_label = Label(text=f'Level {current_level}',
+                        font_size=30,
+                        pos=(450, 300))
 
     def __init__(self, **kwargs):
         super(BreakoutGame, self).__init__(**kwargs)
@@ -103,7 +102,6 @@ class BreakoutGame(Widget):
             self.paddle.disabled = False
         return super(BreakoutGame, self).on_touch_down(touch)
 
-    # TODO 8: Add control for paddle with keys
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if not self.paddle.disabled and self.game_on:
             if keycode[1] == 'right':
@@ -148,8 +146,9 @@ class BreakoutGame(Widget):
 
     def serve_ball(self, vel=(3, 4)):
         self.ball.velocity = (vel[0] * self.ball.speed_modifier, vel[1] * self.ball.speed_modifier)
+        self.remove_widget(self.level_label)
 
-    # TODO 6: Create various levels
+    # create various levels
     def create_blocks(self):
         level_dict = level_manager.levels[f'level_{self.current_level}']
         for block in level_dict:
@@ -159,7 +158,7 @@ class BreakoutGame(Widget):
             self.add_widget(new_block)
 
     def start_game(self, on_touch_down=None, touch=None):
-        self.current_level = 0
+        self.current_level = 1
         self.game_on = True
         self.paddle.lives = 3
         self.paddle.score = 0
@@ -168,6 +167,7 @@ class BreakoutGame(Widget):
             if isinstance(wid, Block) or isinstance(wid, Button):
                 self.remove_widget(wid)
         self.create_blocks()
+        self.add_widget(self.level_label)
         self.update_game = Clock.schedule_interval(self.update, 1/90)
 
     def score(self, block):
@@ -176,11 +176,17 @@ class BreakoutGame(Widget):
 
     def end_game(self):
         self.update_game.cancel()
+        if self.high_score < self.paddle.score:
+            self.set_high_score()
+        self.game_on = False
+        retry_button = Button(text='Try Again?', size=(100, 30), pos=(450, 375), on_press=self.start_game)
+        quit_button = Button(text='Quit to Menu', size=(100, 30), pos=(450, 315), on_press=self.return_to_menu)
+        self.add_widget(retry_button)
+        self.add_widget(quit_button)
 
     def update(self, dt):
         self.ball.move()
 
-        # TODO 3.75: Code wall bounce and paddle bounce
         # bounce off blocks
         no_blocks = True
         for wid in self.walk():
@@ -196,7 +202,7 @@ class BreakoutGame(Widget):
                     if y <= x and time() - self.time_since_bounce_y > 0.1:
                         self.ball.velocity_y *= -1
                         self.time_since_bounce_y = time()
-                        # TODO 3.875: Blocks disappear when hit
+                        # blocks disappear when hit
                         self.score(wid)
                         self.remove_widget(wid)
                 no_blocks = False
@@ -210,7 +216,6 @@ class BreakoutGame(Widget):
         if self.ball.x < 0 or self.ball.right > self.width:
             self.ball.velocity_x *= -1
 
-        # TODO 5: Print lives and scores to screen
         # lose life
         if self.ball.y <= self.y:
             self.paddle.lives -= 1
@@ -220,21 +225,25 @@ class BreakoutGame(Widget):
         # start next level
         if no_blocks:
             self.reset_ball()
-            self.current_level += 1
-            self.ball.speed_modifier *= 1.05
-            self.create_blocks()
+
+            # trigger secret level
+            if self.current_level == 19 and self.paddle.lives == 3:
+                self.current_level = 'chaos'
+            elif self.current_level == 'chaos':
+                self.end_game()
+            else:
+                self.current_level += 1
+
+            if self.game_on:
+                self.ball.speed_modifier *= 1.05
+                self.create_blocks()
+                self.level_label.text = f'Level {self.current_level}'
+                self.add_widget(self.level_label)
+            self.paddle.disabled = True
 
         # end game if lives hit zero
         if self.paddle.lives == 0:
             self.end_game()
-            if self.high_score < self.paddle.score:
-                self.set_high_score()
-            self.game_on = False
-            # TODO 5.5: Fix ending game, maybe buttons to go to main menu or play again?
-            retry_button = Button(text='Try Again?', size=(100, 30), pos=(450, 375), on_press=self.start_game)
-            quit_button = Button(text='Quit to Menu', size=(100, 30), pos=(450, 315), on_press=self.return_to_menu)
-            self.add_widget(retry_button)
-            self.add_widget(quit_button)
 
 
 class StartScreen(Screen):
@@ -258,15 +267,10 @@ class GameScreen(Screen):
 class BreakoutApp(App):
     def build(self):
         sm = ScreenManager(transition=NoTransition())
-        # TODO: 7: A kv file for main menu too
         sm.add_widget(StartScreen(name='start_screen'))
         sm.add_widget(GameScreen(name='game_screen'))
         return sm
 
-
-# TODO 4: Scoring System
-
-# TODO 7.5: Increase speed or difficulty?
 
 if __name__ == "__main__":
     BreakoutApp().run()

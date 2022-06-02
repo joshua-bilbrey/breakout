@@ -18,6 +18,7 @@ class LevelManager:
 
         # LEVEL 0 (TEST LEVEL)
         level_0 = {}
+        # level_0 = {0: {'position': (400, 400), 'value': 1, 'color': BLUE}}
         for block_coord in BLOCK_COORDS:
             level_0.update({BLOCK_COORDS.index(block_coord): {'position': block_coord, 'value': 5, 'color': PURPLE}})
 
