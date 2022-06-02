@@ -81,29 +81,43 @@ class BreakoutGame(Widget):
         super(BreakoutGame, self).__init__(**kwargs)
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
+        self._keyboard.bind(on_key_up=self._on_keyboard_up)
 
     def _keyboard_closed(self):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard.unbind(on_key_up=self._on_keyboard_up)
         self._keyboard = None
 
     def on_touch_move(self, touch):
-        if self.game_on:
+        if not self.paddle.disabled and self.game_on:
             self.paddle.center_x = touch.x
 
-        # serve ball if needed
-        if self.ball.velocity == [0, 0]:
-            self.serve_ball()
+            # serve ball if needed
+            if self.ball.velocity == [0, 0]:
+                self.serve_ball()
+
+    def on_touch_down(self, touch):
+        if self.paddle.disabled and self.game_on:
+            self.paddle.disabled = False
+        return super(BreakoutGame, self).on_touch_down(touch)
 
     # TODO 8: Add control for paddle with keys
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        if keycode[1] == 'right':
-            self.paddle.move()
-        elif keycode[1] == 'left':
-            self.paddle.move(direction=-1)
+        if not self.paddle.disabled and self.game_on:
+            if keycode[1] == 'right':
+                self.paddle.move()
+            elif keycode[1] == 'left':
+                self.paddle.move(direction=-1)
 
-        # serve ball if needed
-        if self.ball.velocity == [0, 0]:
-            self.serve_ball()
+            # serve ball if needed
+            if self.ball.velocity == [0, 0]:
+                self.serve_ball()
+        return True
+
+    def _on_keyboard_up(self, keyboard, keycode):
+        if self.paddle.disabled:
+            if keycode[1] == 'right' or keycode[1] == 'left':
+                self.paddle.disabled = False
         return True
 
     def return_to_menu(self, on_touch_down=None, touch=None):
@@ -199,6 +213,7 @@ class BreakoutGame(Widget):
         if self.ball.y <= self.y:
             self.paddle.lives -= 1
             self.reset_ball()
+            self.paddle.disabled = True
 
         # start next level
         if no_blocks:
