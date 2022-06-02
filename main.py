@@ -39,14 +39,15 @@ class Paddle(Widget):
         if self.collide_widget(ball) and (time() - self.time_since_bounce > 0.1) and ball.velocity != [0, 0]:
             x = min(abs(self.x - ball.right), abs(self.right - ball.x))
             y = abs(self.top - ball.y)
+            base_velocity_sqr = ball.velocity_x ** 2 + ball.velocity_y ** 2
             if y <= x:
                 direction = (ball.center_x - self.center_x) / 75
                 ball.velocity_x = direction * 3
                 if ball.velocity_y >= 0:
-                    ball.velocity_y = (25 - (ball.velocity_x ** 2)) ** (1 / 2) * -1
+                    ball.velocity_y = (base_velocity_sqr - (ball.velocity_x ** 2)) ** (1 / 2) * -1
                 else:
-                    ball.velocity_y = (25 - (ball.velocity_x ** 2)) ** (1 / 2)
-                print(f'Speed: {(ball.velocity_x ** 2 + ball.velocity_y ** 2) ** (1 / 2)}')
+                    ball.velocity_y = (base_velocity_sqr - (ball.velocity_x ** 2)) ** (1 / 2)
+                print(f'Speed: {base_velocity_sqr ** (1/2)}')
             else:
                 ball.velocity_x *= -1
             self.time_since_bounce = time()
@@ -59,6 +60,7 @@ class Paddle(Widget):
 class Ball(Widget):
     velocity_x = NumericProperty(0)
     velocity_y = NumericProperty(0)
+    speed_modifier = 1
 
     velocity = ReferenceListProperty(velocity_x, velocity_y)
 
@@ -145,7 +147,7 @@ class BreakoutGame(Widget):
         self.ball.velocity = (0, 0)
 
     def serve_ball(self, vel=(3, 4)):
-        self.ball.velocity = vel
+        self.ball.velocity = (vel[0] * self.ball.speed_modifier, vel[1] * self.ball.speed_modifier)
 
     # TODO 6: Create various levels
     def create_blocks(self):
@@ -157,7 +159,7 @@ class BreakoutGame(Widget):
             self.add_widget(new_block)
 
     def start_game(self, on_touch_down=None, touch=None):
-        self.current_level = 1
+        self.current_level = 0
         self.game_on = True
         self.paddle.lives = 3
         self.paddle.score = 0
@@ -219,6 +221,7 @@ class BreakoutGame(Widget):
         if no_blocks:
             self.reset_ball()
             self.current_level += 1
+            self.ball.speed_modifier *= 1.05
             self.create_blocks()
 
         # end game if lives hit zero
