@@ -179,8 +179,20 @@ class BreakoutGame(Widget):
         if self.high_score < self.paddle.score:
             self.set_high_score()
         self.game_on = False
-        retry_button = Button(text='Try Again?', size=(100, 30), pos=(450, 375), on_press=self.start_game)
-        quit_button = Button(text='Quit to Menu', size=(100, 30), pos=(450, 315), on_press=self.return_to_menu)
+        retry_button = Button(text='Try Again?',
+                              size=(100, 25),
+                              pos=(450, 375),
+                              background_normal='',
+                              background_color=(183/255, 229/255, 221/255),
+                              color=(0, 0, 0),
+                              on_press=self.start_game)
+        quit_button = Button(text='Quit to Menu',
+                             size=(100, 25),
+                             pos=(450, 340),
+                             background_normal='',
+                             background_color=(154/255, 134/255, 164/255),
+                             color=(0, 0, 0),
+                             on_press=self.return_to_menu)
         self.add_widget(retry_button)
         self.add_widget(quit_button)
 
@@ -274,3 +286,6 @@ class BreakoutApp(App):
 
 if __name__ == "__main__":
     BreakoutApp().run()
+    print('okay')
+else:
+    print('nope')
