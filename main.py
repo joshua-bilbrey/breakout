@@ -45,7 +45,7 @@ class Paddle(Widget):
                     ball.velocity_y = (base_velocity_sqr - (ball.velocity_x ** 2)) ** (1 / 2) * -1
                 else:
                     ball.velocity_y = (base_velocity_sqr - (ball.velocity_x ** 2)) ** (1 / 2)
-                print(f'Speed: {base_velocity_sqr ** (1/2)}')
+                # print(f'Speed: {base_velocity_sqr ** (1/2)}')
             else:
                 ball.velocity_x *= -1
             self.time_since_bounce = time()
@@ -130,13 +130,11 @@ class BreakoutGame(Widget):
             print(f'opened file - high score {self.high_score}')
         except FileNotFoundError:
             self.high_score = 0
-            print(f'{self.high_score}')
 
     def set_high_score(self):
         self.high_score = self.paddle.score
         with open('score.dat', 'wb') as file:
             pickle.dump(self.high_score, file)
-            print(f'new high score {self.high_score}')
 
     def reset_ball(self):
         self.paddle.center_x = self.center_x
@@ -286,6 +284,6 @@ class BreakoutApp(App):
 
 if __name__ == "__main__":
     BreakoutApp().run()
-    print('okay')
+    print('Launching...')
 else:
-    print('nope')
+    print('Game did not start.')

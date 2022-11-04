@@ -265,9 +265,3 @@ class LevelManager:
             num += 1
 
         self.levels.update(level_chaos=secret_level)
-
-        print(self.levels.keys())
-
-
-level_manager = LevelManager()
-level_manager.create_levels()
